@@ -280,6 +280,56 @@ async function sendBarkNotification(title, message) {
     }
 }
 
+// 发送PushPlus通知（微信公众号推送）
+async function sendPushPlusNotification(title, message) {
+    // 从环境变量获取PushPlus配置
+    const pushPlusToken = process.env.PUSHPLUS_TOKEN;
+
+    // 没有token则不发送
+    if (!pushPlusToken) {
+        console.log("未配置PUSHPLUS_TOKEN，跳过PushPlus通知");
+        return false;
+    }
+
+    try {
+        // 推送模板：txt(纯文本,保留换行) / html(支持加粗等排版)
+        const template = process.env.PUSHPLUS_TEMPLATE || "txt";
+
+        const body = {
+            token: pushPlusToken,
+            title: title,
+            // html模板下换行符需转为<br>才能正常显示
+            content: template === "html" ? message.replace(/\n/g, "<br>") : message,
+            template: template
+        };
+
+        // 群组推送（选填）：配置后推送给关注该群组二维码的所有人
+        if (process.env.PUSHPLUS_TOPIC) {
+            body.topic = process.env.PUSHPLUS_TOPIC;
+        }
+
+        console.log(`发送PushPlus通知: template=${template}`);
+
+        // 发送请求
+        const response = await axios.post(
+            "https://www.pushplus.plus/send",
+            body,
+            { timeout: 5000 }
+        );
+
+        if (response.data.code === 200) {
+            console.log("PushPlus通知发送成功");
+            return true;
+        } else {
+            console.error("PushPlus通知发送失败:", response.data.msg || response.data);
+            return false;
+        }
+    } catch (error) {
+        console.error("发送PushPlus通知异常:", error.message);
+        return false;
+    }
+}
+
 // 初始化并执行签到
 async function init() {
     // 处理多账号配置
@@ -338,8 +388,11 @@ async function init() {
         return `${status} ${acc.name}\n${acc.logs.replace(/\n/g, "\n  ")}`;
     }).join("\n\n");
 
-    // 发送Bark通知
-    await sendBarkNotification(title, message);
+    // 并行发送 Bark 和 PushPlus 通知（互不影响，各自独立判断是否配置）
+    await Promise.all([
+        sendBarkNotification(title, message),
+        sendPushPlusNotification(title, message)
+    ]);
 }
 
 // 启动执行
