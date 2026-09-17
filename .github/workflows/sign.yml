@@ -34,7 +34,5 @@ jobs:
           BARK_GROUP: ${{ secrets.BARK_GROUP }}
           BARK_ICON: ${{ secrets.BARK_ICON }}
           BARK_URL: ${{ secrets.BARK_URL }}
-          # PushPlus微信推送（可选）
-          PUSHPLUS_TOKEN: ${{ secrets.PUSHPLUS_TOKEN }}
-          PUSHPLUS_TEMPLATE: ${{ secrets.PUSHPLUS_TEMPLATE }}
-          PUSHPLUS_TOPIC: ${{ secrets.PUSHPLUS_TOPIC }}
+          # Server酱微信推送（可选，消息直达微信，免费无需实名）
+          SERVERCHAN_SENDKEY: ${{ secrets.SERVERCHAN_SENDKEY }}
