@@ -280,52 +280,40 @@ async function sendBarkNotification(title, message) {
     }
 }
 
-// 发送PushPlus通知（微信公众号推送）
-async function sendPushPlusNotification(title, message) {
-    // 从环境变量获取PushPlus配置
-    const pushPlusToken = process.env.PUSHPLUS_TOKEN;
+// 发送Server酱通知（微信服务号推送，免费无需实名不装App）
+// 获取方式：https://sct.ftqq.com 微信扫码登录 → 关注服务号 → 复制SendKey
+// API：POST https://sctapi.ftqq.com/{SendKey}.send，title必填，desp支持Markdown
+// 免费额度：每天5条（签到场景每天1条足够）
+async function sendServerChanNotification(title, message) {
+    // 从环境变量获取Server酱配置
+    const sendKey = process.env.SERVERCHAN_SENDKEY;
 
-    // 没有token则不发送
-    if (!pushPlusToken) {
-        console.log("未配置PUSHPLUS_TOKEN，跳过PushPlus通知");
+    // 没有SendKey则不发送
+    if (!sendKey) {
+        console.log("未配置SERVERCHAN_SENDKEY，跳过Server酱通知");
         return false;
     }
 
     try {
-        // 推送模板：txt(纯文本,保留换行) / html(支持加粗等排版)
-        const template = process.env.PUSHPLUS_TEMPLATE || "txt";
-
-        const body = {
-            token: pushPlusToken,
-            title: title,
-            // html模板下换行符需转为<br>才能正常显示
-            content: template === "html" ? message.replace(/\n/g, "<br>") : message,
-            template: template
-        };
-
-        // 群组推送（选填）：配置后推送给关注该群组二维码的所有人
-        if (process.env.PUSHPLUS_TOPIC) {
-            body.topic = process.env.PUSHPLUS_TOPIC;
-        }
-
-        console.log(`发送PushPlus通知: template=${template}`);
-
-        // 发送请求
+        // title为通知栏标题（Server酱建议简短），完整详情放desp（支持Markdown）
         const response = await axios.post(
-            "https://www.pushplus.plus/send",
-            body,
+            `https://sctapi.ftqq.com/${sendKey}.send`,
+            {
+                title: title,
+                desp: message
+            },
             { timeout: 5000 }
         );
 
-        if (response.data.code === 200) {
-            console.log("PushPlus通知发送成功");
+        if (response.data.code === 0) {
+            console.log("Server酱通知发送成功");
             return true;
         } else {
-            console.error("PushPlus通知发送失败:", response.data.msg || response.data);
+            console.error("Server酱通知发送失败:", response.data.message || JSON.stringify(response.data));
             return false;
         }
     } catch (error) {
-        console.error("发送PushPlus通知异常:", error.message);
+        console.error("发送Server酱通知异常:", error.message);
         return false;
     }
 }
@@ -388,10 +376,10 @@ async function init() {
         return `${status} ${acc.name}\n${acc.logs.replace(/\n/g, "\n  ")}`;
     }).join("\n\n");
 
-    // 并行发送 Bark 和 PushPlus 通知（互不影响，各自独立判断是否配置）
+    // 并行发送 Bark 和 Server酱 通知（互不影响，各自独立判断是否配置）
     await Promise.all([
         sendBarkNotification(title, message),
-        sendPushPlusNotification(title, message)
+        sendServerChanNotification(title, message)
     ]);
 }
 
